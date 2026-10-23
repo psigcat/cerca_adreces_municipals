@@ -1,0 +1,18 @@
+[general]
+name=Cerca Adreces Municipals
+description=QGIS Plugin to perform searches from ICGC API Adreces municipals.
+about=QGIS Plugin to perform searches from ICGC API Adreces municipals. This plugin adds a widget that allows searches on fields like població, carrer, número de portal offered by the API.
+version=0.0.1
+qgisMinimumVersion=3.40
+icon=resources/icons/icon.svg
+author=PSIG
+email=geraldo@servus.at
+changelog=
+tags=
+repository=https://github.com/psigcat/cerca_adreces_municipals
+homepage=https://github.com/psigcat/cerca_adreces_municipals
+tracker=https://github.com/psigcat/cerca_adreces_municipals/issues
+category=Plugins
+# Set to false before going into production
+experimental=True
+deprecated=False

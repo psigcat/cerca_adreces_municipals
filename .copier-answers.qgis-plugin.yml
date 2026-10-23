@@ -1,0 +1,21 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v0.8.1
+_src_path: https://github.com/osgeosuomi/qgis-plugin-copier-template.git
+add_github_workflows: true
+insert_copyright_header: false
+is_monorepo_component: false
+min_code_coverage: 80
+plugin_metadata_author: PSIG
+plugin_metadata_email: geraldo@servus.at
+plugin_metadata_repository_url: https://github.com/psigcat/cerca_adreces_municipals
+qgis_plugin_about: QGIS Plugin to perform and define multiple searches from a PostgreSQL
+    database. This plugin adds a widget that allows searches on a població, carrer,
+    número de portal using ICGC API Adreces municipals
+qgis_plugin_class: PainterPlugin
+qgis_plugin_description: QGIS Plugin to perform and define multiple searches from
+    a PostgreSQL database.
+qgis_plugin_module: cerca_adreces_municipals_plugin
+qgis_plugin_name: Cerca Adreces Municipals
+qgis_version: QGIS3
+setup_translations: false
+type_checking_library: ty
