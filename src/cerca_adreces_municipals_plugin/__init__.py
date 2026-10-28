@@ -1,7 +1,7 @@
 
 import typing
-from qgis.utils import plugins
 
+from qgis.utils import plugins
 
 if typing.TYPE_CHECKING:
     from cerca_adreces_municipals_plugin.plugin import CercaAdrecesMunicipals
@@ -9,7 +9,9 @@ if typing.TYPE_CHECKING:
 
 def classFactory(_) -> "CercaAdrecesMunicipals":  # noqa: ANN001, N802
     """Class factory."""
-    from cerca_adreces_municipals_plugin.plugin import CercaAdrecesMunicipals  # noqa: PLC0415
+    from cerca_adreces_municipals_plugin.plugin import (
+        CercaAdrecesMunicipals,
+    )
 
     return CercaAdrecesMunicipals()
 

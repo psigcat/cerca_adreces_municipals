@@ -71,6 +71,7 @@ repos:
           - flake8-pyproject==1.2.4
           - flake8-spellcheck==0.28.0
           - flake8-qgis==2.1.0
+          - flake8-pyproject
 
   - repo: https://github.com/PyCQA/bandit
     rev: 92ae8b82fb422a639f0ed8d99e96cea769594e08  # frozen: 1.9.4

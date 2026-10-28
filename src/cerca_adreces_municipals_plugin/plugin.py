@@ -1,20 +1,22 @@
-import os
+import configparser
 import logging
 import typing
-import configparser
+from pathlib import Path
 
 import qgis_plugin_tools
-from qgis.PyQt.QtCore import Qt, QEvent
-from qgis.PyQt.QtWidgets import QMessageBox
-from qgis.PyQt.QtGui import QAction, QIcon
 from qgis.core import QgsProject
+from qgis.PyQt.QtCore import QCoreApplication, QEvent, Qt
+from qgis.PyQt.QtGui import QAction, QIcon
+from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.utils import iface as utils_iface
 from qgis_plugin_tools.tools import custom_logging
 from qgis_plugin_tools.tools.decorations import log_if_fails
 
 import cerca_adreces_municipals_plugin
 from cerca_adreces_municipals_plugin import env
-from cerca_adreces_municipals_plugin.plugin_dialog import CercaAdrecesMunicipalsDockWidget
+from cerca_adreces_municipals_plugin.plugin_dialog import (
+    CercaAdrecesMunicipalsDockWidget,
+)
 
 if typing.TYPE_CHECKING:
     from qgis.gui import QgisInterface
@@ -31,10 +33,11 @@ class CercaAdrecesMunicipals:
         self._teardown_loggers = lambda: None
 
         self.iface = iface
-        self.plugin_dir = os.path.dirname(__file__)
-        self.action_name = '&CercaAdrecesMunicipals'
+        self.plugin_dir = Path(__file__).parent
+        self.action_name = "&CercaAdrecesMunicipals"
         self.toolbar = self.iface.addToolBar(self.action_name)
-        self.toolbar.setObjectName(self.action_name)
+        if self.toolbar:
+            self.toolbar.setObjectName(self.action_name)
 
     def initGui(self) -> None:  # noqa: N802
         """Init gui."""
@@ -52,9 +55,13 @@ class CercaAdrecesMunicipals:
         if bool(env.IS_DEVELOPMENT_MODE):
             self.iface_initialization_completed()
 
-        img_folder = os.path.join(self.plugin_dir, "resources/icons")
-        icon_path = os.path.join(img_folder, "CercaLocal.png")
-        self.action = QAction(QIcon(icon_path), "Cerca Adreces Municipals", self.iface.mainWindow())
+        img_folder = Path(self.plugin_dir).parent / "resources/icons"
+        icon_path = Path(img_folder) / "CercaLocal.png"
+        self.action = QAction(
+            QIcon(icon_path),
+            "Cerca Adreces Municipals",
+            self.iface.mainWindow()
+        )
         self.action.setObjectName("CercaAdrecesMunicipals")
         self.action.setWhatsThis("Cerca Adreces Municipals")
         self.action.setStatusTip("Cerca Adreces Municipals")
@@ -64,14 +71,14 @@ class CercaAdrecesMunicipals:
         self.iface.addPluginToMenu(self.action_name, self.action)
 
         self.ui = CercaAdrecesMunicipalsDockWidget(self.iface.mainWindow())
-        self.iface.mainWindow().addDockWidget(Qt.LeftDockWidgetArea, self.ui)
-        self.ui.Progres.hide()
+        self.iface.mainWindow().addDockWidget(Qt.LeftDockWidgetArea, self.ui)  # ty: ignore[unresolved-attribute]
+        self.ui.progressBar.hide()
         self.ui.setVisible(False)
 
-        self.ui.Esborrar.setIcon(QIcon(os.path.join(img_folder, 'Paperera.png')))
-        self.ui.Esborrar.clicked.connect(self.Esborrar)
-        self.ui.Cercar.setIcon(QIcon(os.path.join(img_folder, 'CercaLocal.png')))
-        self.ui.Cercar.clicked.connect(self.Search)
+        self.ui.deleteButton.setIcon(QIcon(Path(img_folder) / 'Paperera.png'))
+        self.ui.deleteButton.clicked.connect(self.delete_layers)
+        self.ui.searchButton.setIcon(QIcon(Path(img_folder) / 'CercaLocal.png'))
+        self.ui.searchButton.clicked.connect(self.search)
 
         # Get plugin version from metadata
         version = self.get_metadata_parameter(self.plugin_dir)
@@ -87,8 +94,8 @@ class CercaAdrecesMunicipals:
 
         self.iface.removePluginMenu(self.action_name, self.action)
         self.iface.removeToolBarIcon(self.action)
-        self.ui.Esborrar.clicked.disconnect(self.Esborrar)
-        self.ui.Cercar.clicked.disconnect(self.Search)
+        self.ui.delete_layers.clicked.disconnect(self.delete_layers)
+        self.ui.searchButton.clicked.disconnect(self.search)
         del self.toolbar
 
 
@@ -99,20 +106,25 @@ class CercaAdrecesMunicipals:
         Executed after initializationCompleted signal is emitted.
         """
         # TODO: Replace with actual functionality  # noqa: TD003
-        # QMessageBox.information(
-        #     iface.mainWindow(),
-        #     "Message",
-        #     "Hello world",
-        # )
+        QMessageBox.information(
+            iface.mainWindow(),
+            "Message",
+            "Hello world",
+        )
 
 
-    def get_metadata_parameter(self, folder, section="general", parameter="version", file="metadata.txt"):
-        """ Get parameter value from Metadata """
-
+    def get_metadata_parameter(
+        self,
+        folder: Path,
+        section:str="general",
+        parameter:str="version",
+        file:str="metadata.txt"
+    ) -> str | None:
+        """Get parameter value from Metadata."""
         # Check if metadata file exists
-        metadata_file = os.path.join(folder, file)
-        if not os.path.exists(metadata_file):
-            self.Missatge(f"Couldn'f find metadata file: {metadata_file}")
+        metadata_file = Path(folder) / file
+        if not Path.exists(metadata_file):
+            self.show_message_box("W", f"Couldn'f find metadata file: {metadata_file}")
             return None
 
         value = None
@@ -120,15 +132,14 @@ class CercaAdrecesMunicipals:
             metadata = configparser.ConfigParser()
             metadata.read(metadata_file)
             value = metadata.get(section, parameter)
-        except Exception as e:
-            self.Missatge(e)
-        finally:
-            return value
+        except FileNotFoundError as e:
+            self.show_message_box("C", str(e))
+
+        return value
 
 
-    def Missatge(self,av,t):
-        """ Finestra missatges """
-
+    def show_message_box(self, av:str, t:str)->None:
+        """Finestra show_message_boxs."""
         m = QMessageBox()
         if av == "W":
             m.setIcon(QMessageBox.Warning)
@@ -144,55 +155,59 @@ class CercaAdrecesMunicipals:
         m.setStandardButtons(QMessageBox.Ok)
         b = m.button(QMessageBox.Ok)
         b.setText("Segueix")
-        m.exec_()
+        m.exec()
 
 
-    def Progress(self):
-        """ Barra de progrés """
-
-        if self.ui.Progres.value() > 99:
-            self.ui.Progres.setValue(0)
-        self.ui.Progres.setValue(self.ui.Progres.value() + 1)
+    def update_progress(self)->None:
+        """Barra de progrés."""
+        if self.ui.progressBar.value() > 99:
+            self.ui.progressBar.setValue(0)
+        self.ui.progressBar.setValue(self.ui.progressBar.value() + 1)
         QCoreApplication.processEvents()
 
 
-    def run(self):
-
+    def run(self)->None:
+        """Run method."""
         if self.ui and not self.ui.isVisible():
             self.ui.show()
-        return
 
 
-    def Esborrar(self):
-        """ Esborrar capes creades """
+    def delete_layers(self)->None:
+        """delete_layers capes creades."""
+        instance = QgsProject.instance()
+        if not instance:
+            return
 
-        bas = QgsProject.instance().layerTreeRoot()
+        bas = instance.layerTreeRoot()
+        if not bas:
+            return
+
         grup = bas.findGroup("Cerca Local")
-        if not grup is None:
+        if grup is not None:
             for fill in grup.children():
-                id = fill.dump().split("=")[-1].strip()
-                QgsProject.instance().removeMapLayer(id)
+                layer_id = fill.dump().split("=")[-1].strip()
+                instance.removeMapLayer(layer_id)
             bas.removeChildNode(grup)
-        self.iface.mapCanvas().refresh()
+
+        canvas = self.iface.mapCanvas()
+        if canvas:
+            canvas.refresh()
 
 
-    def eventFilter(self,o,e):
-        """ Si Return/Enter fer cerca """
-
-        if e.type() == QEvent.KeyPress:
-            if e.key() == Qt.Key_Return or e.key() == Qt.Key_Enter:
-                self.Search()
+    def event_filter(self, o, e)->bool:
+        """Si Return/Enter fer cerca."""
+        if e.type() == QEvent.KeyPress and \
+            (e.key() == Qt.Key_Return or e.key() == Qt.Key_Enter):
+            self.search()
         return False
 
 
-    def Search(self):
-        """ Fer cerca """
-
-        self.ui.Progres.show()
-        self.ui.Progres.setValue(10)
-        self.Progress()
+    def search(self)->None:
+        """Fer cerca."""
+        self.ui.progressBar.show()
+        self.ui.progressBar.setValue(10)
+        self.update_progress()
 
         # connect to API and perform search
 
-
-        self.ui.Progres.hide()
+        self.ui.progressBar.hide()

@@ -24,7 +24,7 @@
     <item>
      <layout class="QGridLayout" name="gridLayout">
       <item row="3" column="0">
-       <widget class="QPushButton" name="Esborrar">
+       <widget class="QPushButton" name="deleteButton">
         <property name="minimumSize">
          <size>
           <width>28</width>
@@ -58,7 +58,7 @@
        </widget>
       </item>
       <item row="3" column="2">
-       <widget class="QPushButton" name="Cercar">
+       <widget class="QPushButton" name="searchButton">
         <property name="minimumSize">
          <size>
           <width>33</width>
@@ -78,7 +78,7 @@
        </widget>
       </item>
       <item row="3" column="1">
-       <widget class="QProgressBar" name="Progres">
+       <widget class="QProgressBar" name="progressBar">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
           <horstretch>0</horstretch>

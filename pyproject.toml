@@ -79,6 +79,7 @@ lint.ignore = [
   "COM812", # missing-trailing-comma (formatter will enforce this)
   "ISC001", # single-line-implicit-string-concatenation
   "UP037",  # quoted-annotation (quoted annotations are used with TYPE_CHECKING imports)
+  "PLC0415",# import-outside-top-level
 ]
 
 # List of all rules https://docs.astral.sh/ruff/rules/
@@ -128,6 +129,7 @@ per-file-ignores = [
   "test_integration/*:SC200,QGS",
   "test_e2e/*:SC200,QGS",
 ]
+extend-ignore = ["SC200"]
 
 [tool.bandit]
 exclude_dirs = ["test"]
