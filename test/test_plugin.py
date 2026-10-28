@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pytest_mock import MockerFixture
     from qgis.gui import QgisInterface
 
-    from cerca_adreces_municipals_plugin.plugin import PainterPlugin
+    from cerca_adreces_municipals_plugin.plugin import CercaAdrecesMunicipals
 
 
 @pytest.fixture(autouse=True)
@@ -23,7 +23,7 @@ def mock_message_box_ok(mocker: "MockerFixture") -> "MagicMock":
 
 
 @pytest.fixture
-def plugin_loaded(qgis_iface: "QgisInterface") -> "Iterator[PainterPlugin]":
+def plugin_loaded(qgis_iface: "QgisInterface") -> "Iterator[CercaAdrecesMunicipals]":
     plugin = classFactory(qgis_iface)
     plugin.initGui()
 
@@ -33,7 +33,7 @@ def plugin_loaded(qgis_iface: "QgisInterface") -> "Iterator[PainterPlugin]":
 
 
 def test_plugin_loads_without_errors(
-    mock_message_box_ok: "MagicMock", plugin_loaded: "PainterPlugin"
+    mock_message_box_ok: "MagicMock", plugin_loaded: "CercaAdrecesMunicipals"
 ) -> None:
     mock_message_box_ok.assert_called_once()
 

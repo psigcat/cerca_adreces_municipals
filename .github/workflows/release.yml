@@ -17,7 +17,7 @@ jobs:
   publish:
     needs: [ style, test ]
     name: Publish plugin to QGIS plugin repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: qgis/qgis:3.44-noble
     permissions:
@@ -48,7 +48,7 @@ jobs:
       - name: Smoke test the plugin build
         run: |
           PYTHONPATH=build_scan python3 -c \
-            "from cerca_adreces_municipals_plugin.plugin import PainterPlugin"
+            "from cerca_adreces_municipals_plugin.plugin import CercaAdrecesMunicipals"
 
       - name: Publish QGIS Plugin
         run: |

@@ -11,7 +11,7 @@ plugin_metadata_repository_url: https://github.com/psigcat/cerca_adreces_municip
 qgis_plugin_about: QGIS Plugin to perform and define multiple searches from a PostgreSQL
     database. This plugin adds a widget that allows searches on a població, carrer,
     número de portal using ICGC API Adreces municipals
-qgis_plugin_class: PainterPlugin
+qgis_plugin_class: CercaAdrecesMunicipals
 qgis_plugin_description: QGIS Plugin to perform and define multiple searches from
     a PostgreSQL database.
 qgis_plugin_module: cerca_adreces_municipals_plugin
