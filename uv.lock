@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 
 [[package]]
@@ -28,8 +28,9 @@ wheels = [
 
 [[package]]
 name = "cerca-adreces-municipals-plugin"
-version = "0.0.0.post0"
+version = "0.0.1"
 source = { editable = "." }
+default-groups = ["dev", "lint"]
 dependencies = [
     { name = "qgis-plugin-tools" },
 ]
