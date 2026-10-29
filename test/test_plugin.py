@@ -273,3 +273,119 @@ def test_get_layer_group_and_create(
     created = plugin_loaded.create_group("New Group")
     mock_root.addGroup.assert_called_once_with("New Group")
     assert created == mock_group
+
+
+def test_do_search_success(
+    plugin_loaded: "CercaAdrecesMunicipals", mocker: "MockerFixture"
+) -> None:
+    """Test successful search pipeline triggering add_geojson_to_memory[cite: 9]."""
+    mocker.patch.object(
+        plugin_loaded.ui.cb_poblacio, "currentText", return_value="Sabadell"
+    )
+    mocker.patch.object(plugin_loaded.ui.cb_carrer, "currentText", return_value="Major")
+    mocker.patch.object(plugin_loaded.ui.cb_portal, "currentText", return_value="1")
+
+    # Mock get_json to return a valid fake GeoJSON response[cite: 9]
+    fake_geojson = {"features": [{"properties": {"test": 1}}]}
+    mocker.patch.object(plugin_loaded, "get_json", return_value=fake_geojson)
+
+    # Spy on add_geojson_to_memory to ensure it gets called[cite: 9]
+    mock_add_geojson = mocker.patch.object(plugin_loaded, "add_geojson_to_memory")
+
+    plugin_loaded.do_search()
+
+    mock_add_geojson.assert_called_once_with(fake_geojson, "Adreça Major 1,Sabadell")
+
+
+def test_get_json_success(
+    plugin_loaded: "CercaAdrecesMunicipals", mocker: "MockerFixture"
+) -> None:
+    """Test successful API network request and JSON decoding[cite: 9]."""
+    mock_request_class = mocker.patch(
+        "cerca_adreces_municipals_plugin.plugin.QgsBlockingNetworkRequest"
+    )
+    mock_request_instance = mock_request_class.return_value
+    mock_request_instance.get.return_value = QgsBlockingNetworkRequest.ErrorCode.NoError
+
+    # Construct the chained mock for reply.content().data().decode()[cite: 9]
+    mock_reply = mock_request_instance.reply.return_value
+    mock_reply.attribute.return_value = 200
+    mock_data = mocker.MagicMock()
+    mock_data.decode.return_value = '{"features": [{"fake": "data"}]}'
+    mock_reply.content.return_value.data = mocker.MagicMock(return_value=mock_data)
+
+    result = plugin_loaded.get_json({"text": "Sabadell"})
+
+    assert result == {"features": [{"fake": "data"}]}
+
+
+def test_add_geojson_to_memory_empty(plugin_loaded: "CercaAdrecesMunicipals") -> None:
+    """Test layer creation aborts safely when no features are present[cite: 9]."""
+    result = plugin_loaded.add_geojson_to_memory({"features": []})
+    assert result is None
+
+
+def test_add_geojson_to_memory_success(
+    plugin_loaded: "CercaAdrecesMunicipals", mocker: "MockerFixture"
+) -> None:
+    """Test parsing a valid GeoJSON dictionary into QgsVectorLayer fields and features[cite: 9]."""
+    geojson = {
+        "features": [
+            {
+                "geometry": {"coordinates": [2.10, 41.54]},
+                "properties": {
+                    "int_field": 10,
+                    "float_field": 15.5,
+                    "str_field": "Test String",
+                    "dict_field": {"nested": "value"},
+                    "addendum": {"bbox": "2.1,41.5,2.2,41.6"},
+                },
+            }
+        ]
+    }
+
+    # Block the actual addition to canvas to keep this test isolated[cite: 9]
+    mock_add_layer = mocker.patch.object(plugin_loaded, "add_layer_to_canvas")
+
+    layer = plugin_loaded.add_geojson_to_memory(geojson, "Test Output Layer")
+
+    assert layer is not None
+    assert layer.name() == "Test Output Layer"
+    assert layer.isValid()
+    assert layer.featureCount() == 1
+
+    # Check if field types were parsed correctly[cite: 9]
+    fields = layer.fields()
+    assert fields.indexOf("int_field") != -1
+    assert fields.indexOf("float_field") != -1
+    assert fields.indexOf("str_field") != -1
+
+    mock_add_layer.assert_called_once()
+
+
+def test_add_layer_to_canvas(
+    plugin_loaded: "CercaAdrecesMunicipals", mocker: "MockerFixture"
+) -> None:
+    """Test adding the vector layer to the QgsProject and map canvas extent handling[cite: 9]."""
+    # Mock project, canvas, and iface to prevent QGIS UI crashes during tests[cite: 9]
+    mock_project = mocker.patch("cerca_adreces_municipals_plugin.plugin.QgsProject")
+    mock_instance = mock_project.instance.return_value
+
+    mock_iface = mocker.patch("cerca_adreces_municipals_plugin.plugin.iface")
+    mock_canvas = mock_iface.mapCanvas.return_value
+
+    # Create fake layer and target extent[cite: 9]
+    mock_layer = mocker.MagicMock()
+    mock_layer.crs.return_value = "EPSG:4326"
+
+    # Simulate matching CRSs to bypass the transform branch[cite: 9]
+    mock_canvas.mapSettings().destinationCrs.return_value = "EPSG:4326"
+    mock_extent = mocker.MagicMock()
+
+    plugin_loaded.add_layer_to_canvas(mock_layer, mock_extent)
+
+    # Verify canvas zoom and layer registration occurred[cite: 9]
+    mock_instance.addMapLayer.assert_called_once_with(mock_layer, addToLegend=False)
+    mock_extent.scale.assert_called_once_with(1.1)
+    mock_canvas.setExtent.assert_called_once_with(mock_extent)
+    mock_canvas.refresh.assert_called_once()
