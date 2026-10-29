@@ -221,32 +221,6 @@ def test_extract_bbox(plugin_loaded: "CercaAdrecesMunicipals") -> None:
     assert result.yMaximum() == 41.983
 
 
-def test_get_json_network_error(
-    plugin_loaded: "CercaAdrecesMunicipals", mocker: "MockerFixture"
-) -> None:
-    """Test that get_json raises a RuntimeError on HTTP failure[cite: 8]."""
-    # Mock the QgsBlockingNetworkRequest to simulate a failure[cite: 8]
-    mock_request_class = mocker.patch(
-        "cerca_adreces_municipals_plugin.plugin.QgsBlockingNetworkRequest"
-    )
-    mock_request_instance = mock_request_class.return_value
-
-    # Force the get() method to return a timeout error code instead of NoError[cite: 8]
-    mock_request_instance.get.return_value = (
-        QgsBlockingNetworkRequest.ErrorCode.TimeoutError
-    )
-    mock_request_instance.errorMessage.return_value = "Connection timed out"
-
-    # Mock the reply status code[cite: 8]
-    mock_reply = mock_request_instance.reply.return_value
-    mock_reply.attribute.return_value = 408
-
-    with pytest.raises(RuntimeError) as exc_info:
-        plugin_loaded.get_json({"text": "test"})
-
-    assert "HTTP 408: Connection timed out" in str(exc_info.value)
-
-
 def test_get_layer_group_and_create(
     plugin_loaded: "CercaAdrecesMunicipals", mocker: "MockerFixture"
 ) -> None:
@@ -300,23 +274,51 @@ def test_do_search_success(
 def test_get_json_success(
     plugin_loaded: "CercaAdrecesMunicipals", mocker: "MockerFixture"
 ) -> None:
-    """Test successful API network request and JSON decoding[cite: 9]."""
-    mock_request_class = mocker.patch(
-        "cerca_adreces_municipals_plugin.plugin.QgsBlockingNetworkRequest"
+    """Test successful API network request and JSON decoding."""
+    # Patch methods on the class instead of patching the whole class
+    # so we don't accidentally overwrite the ErrorCode enums.
+    mocker.patch.object(
+        QgsBlockingNetworkRequest,
+        "get",
+        return_value=QgsBlockingNetworkRequest.ErrorCode.NoError,
     )
-    mock_request_instance = mock_request_class.return_value
-    mock_request_instance.get.return_value = QgsBlockingNetworkRequest.ErrorCode.NoError
 
-    # Construct the chained mock for reply.content().data().decode()[cite: 9]
-    mock_reply = mock_request_instance.reply.return_value
+    # Construct the chained mock for reply.content().data().decode()
+    mock_reply = mocker.MagicMock()
     mock_reply.attribute.return_value = 200
+
     mock_data = mocker.MagicMock()
     mock_data.decode.return_value = '{"features": [{"fake": "data"}]}'
     mock_reply.content.return_value.data = mocker.MagicMock(return_value=mock_data)
 
+    mocker.patch.object(QgsBlockingNetworkRequest, "reply", return_value=mock_reply)
+
     result = plugin_loaded.get_json({"text": "Sabadell"})
 
     assert result == {"features": [{"fake": "data"}]}
+
+
+def test_get_json_network_error(
+    plugin_loaded: "CercaAdrecesMunicipals", mocker: "MockerFixture"
+) -> None:
+    """Test that get_json raises a RuntimeError on HTTP failure."""
+    mocker.patch.object(
+        QgsBlockingNetworkRequest,
+        "get",
+        return_value=QgsBlockingNetworkRequest.ErrorCode.TimeoutError,
+    )
+    mocker.patch.object(
+        QgsBlockingNetworkRequest, "errorMessage", return_value="Connection timed out"
+    )
+
+    mock_reply = mocker.MagicMock()
+    mock_reply.attribute.return_value = 408
+    mocker.patch.object(QgsBlockingNetworkRequest, "reply", return_value=mock_reply)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        plugin_loaded.get_json({"text": "test"})
+
+    assert "HTTP 408: Connection timed out" in str(exc_info.value)
 
 
 def test_add_geojson_to_memory_empty(plugin_loaded: "CercaAdrecesMunicipals") -> None:

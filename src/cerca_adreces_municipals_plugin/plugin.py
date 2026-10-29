@@ -301,7 +301,7 @@ class CercaAdrecesMunicipals:
         fields = []
 
         for key, value in first_props.items():
-            field = QgsField()  # ty: ignore[missing-argument, unused-ignore-comment]
+            field = typing.cast("typing.Any", QgsField)()
             field.setName(key)
 
             if isinstance(value, int):
@@ -372,7 +372,7 @@ class CercaAdrecesMunicipals:
             instance.addMapLayer(layer, addToLegend=False)
 
             layer_group = self.get_layer_group(self.plugin_name)
-            if layer_group is not None:
+            if layer_group is None:
                 layer_group = self.create_group(self.plugin_name)
 
             if layer_group is not None:
@@ -383,7 +383,7 @@ class CercaAdrecesMunicipals:
             # Check if project CRS matches the layer's EPSG:4326 or transform the bbox.
             canvas_crs = canvas.mapSettings().destinationCrs()
             if canvas_crs != layer.crs():
-                transform = QgsCoordinateTransform()  # ty: ignore[missing-argument, unused-ignore-comment]
+                transform = typing.cast("typing.Any", QgsCoordinateTransform)()
                 transform.setSourceCrs(layer.crs())
                 transform.setDestinationCrs(canvas_crs)
                 transform.setContext(instance.transformContext())
