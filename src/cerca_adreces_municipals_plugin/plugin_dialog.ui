@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+
 <ui version="4.0">
  <class>CercaAdrecesMunicipalsDialog</class>
  <widget class="QDockWidget" name="CercaAdrecesMunicipalsDialog">
@@ -23,7 +23,7 @@
    <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="3" column="0">
+      <item column="0" row="3">
        <widget class="QPushButton" name="deleteButton">
         <property name="minimumSize">
          <size>
@@ -43,21 +43,21 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="0">
+      <item column="0" row="0">
        <widget class="QLabel" name="label">
         <property name="text">
          <string>Població</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="0">
+      <item column="0" row="1">
        <widget class="QLabel" name="label_2">
         <property name="text">
          <string>Carrer</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="2">
+      <item column="2" row="3">
        <widget class="QPushButton" name="searchButton">
         <property name="minimumSize">
          <size>
@@ -73,11 +73,11 @@
         </property>
         <property name="icon">
          <iconset>
-          <normaloff>resources/icons/icon.svg</normaloff>resources/icons/icon.svg</iconset>
+          <normaloff>resources/icons/CercaLocal.png</normaloff>resources/icons/CercaLocal.png</iconset>
         </property>
        </widget>
       </item>
-      <item row="3" column="1">
+      <item column="1" row="3">
        <widget class="QProgressBar" name="progressBar">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -102,28 +102,28 @@
         </property>
        </widget>
       </item>
-      <item row="2" column="0">
+      <item column="0" row="2">
        <widget class="QLabel" name="label_3">
         <property name="text">
          <string>Número de portal</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="1" colspan="2">
+      <item colspan="2" column="1" row="0">
        <widget class="QComboBox" name="cb_poblacio">
         <property name="editable">
          <bool>true</bool>
         </property>
        </widget>
       </item>
-      <item row="1" column="1" colspan="2">
+      <item colspan="2" column="1" row="1">
        <widget class="QComboBox" name="cb_carrer">
         <property name="editable">
          <bool>true</bool>
         </property>
        </widget>
       </item>
-      <item row="2" column="1" colspan="2">
+      <item colspan="2" column="1" row="2">
        <widget class="QComboBox" name="cb_portal">
         <property name="editable">
          <bool>true</bool>

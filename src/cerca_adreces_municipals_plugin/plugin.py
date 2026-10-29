@@ -5,7 +5,7 @@ from pathlib import Path
 
 import qgis_plugin_tools
 from qgis.core import QgsProject
-from qgis.PyQt.QtCore import QCoreApplication, QEvent, Qt
+from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.PyQt.QtGui import QAction, QIcon
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.utils import iface as utils_iface
@@ -55,12 +55,10 @@ class CercaAdrecesMunicipals:
         if bool(env.IS_DEVELOPMENT_MODE):
             self.iface_initialization_completed()
 
-        img_folder = Path(self.plugin_dir).parent / "resources/icons"
+        img_folder = Path(self.plugin_dir) / "resources" / "icons"
         icon_path = Path(img_folder) / "CercaLocal.png"
         self.action = QAction(
-            QIcon(icon_path),
-            "Cerca Adreces Municipals",
-            self.iface.mainWindow()
+            QIcon(str(icon_path)), "Cerca Adreces Municipals", self.iface.mainWindow()
         )
         self.action.setObjectName("CercaAdrecesMunicipals")
         self.action.setWhatsThis("Cerca Adreces Municipals")
@@ -75,9 +73,9 @@ class CercaAdrecesMunicipals:
         self.ui.progressBar.hide()
         self.ui.setVisible(False)
 
-        self.ui.deleteButton.setIcon(QIcon(Path(img_folder) / 'Paperera.png'))
+        self.ui.deleteButton.setIcon(QIcon(str(Path(img_folder) / "Paperera.png")))
         self.ui.deleteButton.clicked.connect(self.delete_layers)
-        self.ui.searchButton.setIcon(QIcon(Path(img_folder) / 'CercaLocal.png'))
+        self.ui.searchButton.setIcon(QIcon(str(Path(img_folder) / "CercaLocal.png")))
         self.ui.searchButton.clicked.connect(self.search)
 
         # Get plugin version from metadata
@@ -86,7 +84,6 @@ class CercaAdrecesMunicipals:
 
         LOGGER.info("Plugin initialized")
 
-
     def unload(self) -> None:
         """Unload plugin."""
         self._teardown_loggers()
@@ -94,10 +91,9 @@ class CercaAdrecesMunicipals:
 
         self.iface.removePluginMenu(self.action_name, self.action)
         self.iface.removeToolBarIcon(self.action)
-        self.ui.delete_layers.clicked.disconnect(self.delete_layers)
+        self.ui.deleteButton.clicked.disconnect(self.delete_layers)
         self.ui.searchButton.clicked.disconnect(self.search)
         del self.toolbar
-
 
     @log_if_fails
     def iface_initialization_completed(self) -> None:
@@ -112,13 +108,12 @@ class CercaAdrecesMunicipals:
             "Hello world",
         )
 
-
     def get_metadata_parameter(
         self,
         folder: Path,
-        section:str="general",
-        parameter:str="version",
-        file:str="metadata.txt"
+        section: str = "general",
+        parameter: str = "version",
+        file: str = "metadata.txt",
     ) -> str | None:
         """Get parameter value from Metadata."""
         # Check if metadata file exists
@@ -137,8 +132,7 @@ class CercaAdrecesMunicipals:
 
         return value
 
-
-    def show_message_box(self, av:str, t:str)->None:
+    def show_message_box(self, av: str, t: str) -> None:
         """Finestra show_message_boxs."""
         m = QMessageBox()
         if av == "W":
@@ -157,23 +151,21 @@ class CercaAdrecesMunicipals:
         b.setText("Segueix")
         m.exec()
 
-
-    def update_progress(self)->None:
+    def update_progress(self) -> None:
         """Barra de progrés."""
-        if self.ui.progressBar.value() > 99:
+        max_progress = 99
+        if self.ui.progressBar.value() > max_progress:
             self.ui.progressBar.setValue(0)
         self.ui.progressBar.setValue(self.ui.progressBar.value() + 1)
         QCoreApplication.processEvents()
 
-
-    def run(self)->None:
+    def run(self) -> None:
         """Run method."""
         if self.ui and not self.ui.isVisible():
             self.ui.show()
 
-
-    def delete_layers(self)->None:
-        """delete_layers capes creades."""
+    def delete_layers(self) -> None:
+        """Delete capes creades."""
         instance = QgsProject.instance()
         if not instance:
             return
@@ -185,7 +177,7 @@ class CercaAdrecesMunicipals:
         grup = bas.findGroup("Cerca Local")
         if grup is not None:
             for fill in grup.children():
-                layer_id = fill.dump().split("=")[-1].strip()
+                layer_id = fill.dump().split(" = ")[-1].strip()
                 instance.removeMapLayer(layer_id)
             bas.removeChildNode(grup)
 
@@ -193,16 +185,7 @@ class CercaAdrecesMunicipals:
         if canvas:
             canvas.refresh()
 
-
-    def event_filter(self, o, e)->bool:
-        """Si Return/Enter fer cerca."""
-        if e.type() == QEvent.KeyPress and \
-            (e.key() == Qt.Key_Return or e.key() == Qt.Key_Enter):
-            self.search()
-        return False
-
-
-    def search(self)->None:
+    def search(self) -> None:
         """Fer cerca."""
         self.ui.progressBar.show()
         self.ui.progressBar.setValue(10)

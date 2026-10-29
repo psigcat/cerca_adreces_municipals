@@ -1,4 +1,3 @@
-
 import typing
 
 from qgis.utils import plugins
