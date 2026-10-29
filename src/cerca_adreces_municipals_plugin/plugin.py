@@ -69,7 +69,9 @@ class CercaAdrecesMunicipals:
         self.iface.addPluginToMenu(self.action_name, self.action)
 
         self.ui = CercaAdrecesMunicipalsDockWidget(self.iface.mainWindow())
-        self.iface.mainWindow().addDockWidget(Qt.LeftDockWidgetArea, self.ui)  # ty: ignore[unresolved-attribute]
+        self.iface.mainWindow().addDockWidget(  # ty: ignore[unresolved-attribute]
+            Qt.DockWidgetArea.LeftDockWidgetArea, self.ui
+        )
         self.ui.progressBar.hide()
         self.ui.setVisible(False)
 

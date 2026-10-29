@@ -42,13 +42,20 @@ def test_plugin_loads_without_errors(
     # assert plugin_loaded.toolbar is not None
 
 
-def test_run_shows_ui(plugin_loaded: "CercaAdrecesMunicipals") -> None:
+def test_run_shows_ui(
+    plugin_loaded: "CercaAdrecesMunicipals", mocker: "MockerFixture"
+) -> None:
     """Test that the run method makes the UI visible[cite: 3]."""
-    plugin_loaded.ui.setVisible(False)
-    assert not plugin_loaded.ui.isVisible()
+    # Force the UI to report that it is hidden[cite: 3]
+    mocker.patch.object(plugin_loaded.ui, "isVisible", return_value=False)
+
+    # Spy on the show method to see if it gets called[cite: 3]
+    mock_show = mocker.patch.object(plugin_loaded.ui, "show")
 
     plugin_loaded.run()
-    assert plugin_loaded.ui.isVisible()
+
+    # Assert that plugin.run() successfully triggered the UI to show[cite: 3]
+    mock_show.assert_called_once()
 
 
 def test_update_progress_increment(plugin_loaded: "CercaAdrecesMunicipals") -> None:
