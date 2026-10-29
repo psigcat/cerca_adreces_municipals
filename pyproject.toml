@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "cerca-adreces-municipals-plugin"
 requires-python = ">=3.12"
-version = "0.0.0.post0"
+version = "0.0.1"
 readme = "README.md"
 dependencies = ["qgis_plugin_tools>=2.1.0"]
 

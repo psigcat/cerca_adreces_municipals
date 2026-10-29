@@ -11,8 +11,9 @@ repository=https://github.com/psigcat/cerca_adreces_municipals
 homepage=https://github.com/psigcat/cerca_adreces_municipals
 tracker=https://github.com/psigcat/cerca_adreces_municipals/issues
 category=Plugins
-tags=
+tags=api,address,search,icgc,cataluña,catalunya,catalonia,find,street,place
 experimental=False
 deprecated=False
 
 changelog=
+    0.0.1 - Initial commit
