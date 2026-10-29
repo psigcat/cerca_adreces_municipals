@@ -20,7 +20,7 @@ from qgis.core import (
     QgsRectangle,
     QgsVectorLayer,
 )
-from qgis.PyQt.QtCore import QCoreApplication, Qt, QUrl, QUrlQuery, QVariant
+from qgis.PyQt.QtCore import QCoreApplication, QMetaType, Qt, QUrl, QUrlQuery
 from qgis.PyQt.QtGui import QAction, QIcon
 from qgis.PyQt.QtNetwork import QNetworkRequest
 from qgis.PyQt.QtWidgets import QMessageBox
@@ -276,14 +276,14 @@ class CercaAdrecesMunicipals:
             blocking.setAuthCfg(authcfg)
         code = blocking.get(request, False, feedback)
         reply = blocking.reply()
-        status = reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
+        status = reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute)
         self.update_progress()
 
         if code != QgsBlockingNetworkRequest.ErrorCode.NoError:
             msg = f"HTTP {status}: {blocking.errorMessage()}"
             raise RuntimeError(msg)
         self.update_progress()
-        return json.loads(bytes(reply.content()).decode("utf-8"))
+        return json.loads(reply.content().data().decode("utf-8"))
 
     def add_geojson_to_memory(
         self, geojson_dict: dict, layer_name: str = "Addresses"
@@ -302,11 +302,11 @@ class CercaAdrecesMunicipals:
 
         for key, value in first_props.items():
             if isinstance(value, int):
-                fields.append(QgsField(key, QVariant.Int))
+                fields.append(QgsField(key, QMetaType.Type.Int))
             elif isinstance(value, float):
-                fields.append(QgsField(key, QVariant.Double))
+                fields.append(QgsField(key, QMetaType.Type.Double))
             else:
-                fields.append(QgsField(key, QVariant.String))
+                fields.append(QgsField(key, QMetaType.Type.QString))
 
         if provider is not None:
             provider.addAttributes(fields)
@@ -374,11 +374,13 @@ class CercaAdrecesMunicipals:
                 layer_group.addChildNode(QgsLayerTreeLayer(layer))
 
         canvas = iface.mapCanvas()
-        if target_extent and iface and canvas is not None:
+        if target_extent and iface and canvas is not None and instance:
             # Check if project CRS matches the layer's EPSG:4326 or transform the bbox.
             canvas_crs = canvas.mapSettings().destinationCrs()
             if canvas_crs != layer.crs():
-                transform = QgsCoordinateTransform(layer.crs(), canvas_crs, instance)
+                transform = QgsCoordinateTransform(
+                    layer.crs(), canvas_crs, instance.transformContext()
+                )
                 target_extent = transform.transformBoundingBox(target_extent)
 
             # Apply extent to canvas with a buffer so the point isn't touching the edge

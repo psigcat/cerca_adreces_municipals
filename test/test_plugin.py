@@ -136,6 +136,6 @@ def test_delete_layers(
 
     plugin_loaded.delete_layers()
 
-    mock_root.findGroup.assert_called_once_with("Cerca Local")
+    mock_root.findGroup.assert_called_once_with("Cerca Adreces Municipals")
     mock_instance.removeMapLayer.assert_called_once_with("mock_id_123")
     mock_root.removeChildNode.assert_called_once_with(mock_group)
