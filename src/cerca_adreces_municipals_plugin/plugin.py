@@ -136,19 +136,20 @@ class CercaAdrecesMunicipals:
         """Finestra show_message_boxs."""
         m = QMessageBox()
         if av == "W":
-            m.setIcon(QMessageBox.Warning)
+            m.setIcon(QMessageBox.Icon.Warning)
             z = "Atenció"
         elif av == "C":
-            m.setIcon(QMessageBox.Critical)
+            m.setIcon(QMessageBox.Icon.Critical)
             z = "Error"
         else:
-            m.setIcon(QMessageBox.Information)
+            m.setIcon(QMessageBox.Icon.Information)
             z = "Avís"
         m.setWindowTitle(z)
         m.setText(t)
-        m.setStandardButtons(QMessageBox.Ok)
-        b = m.button(QMessageBox.Ok)
-        b.setText("Segueix")
+        m.setStandardButtons(QMessageBox.StandardButton.Ok)
+        b = m.button(QMessageBox.StandardButton.Ok)
+        if b:
+            b.setText("Segueix")
         m.exec()
 
     def update_progress(self) -> None:
@@ -167,11 +168,11 @@ class CercaAdrecesMunicipals:
     def delete_layers(self) -> None:
         """Delete capes creades."""
         instance = QgsProject.instance()
-        if not instance:
+        if instance is None:
             return
 
         bas = instance.layerTreeRoot()
-        if not bas:
+        if bas is None:
             return
 
         grup = bas.findGroup("Cerca Local")
