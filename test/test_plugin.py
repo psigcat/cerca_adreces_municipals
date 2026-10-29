@@ -368,25 +368,28 @@ def test_add_geojson_to_memory_success(
 def test_add_layer_to_canvas(
     plugin_loaded: "CercaAdrecesMunicipals", mocker: "MockerFixture"
 ) -> None:
-    """Test adding the vector layer to the QgsProject and map canvas extent handling[cite: 9]."""
-    # Mock project, canvas, and iface to prevent QGIS UI crashes during tests[cite: 9]
+    """Test adding the vector layer to the QgsProject and map canvas extent handling."""
+    # Patch QgsLayerTreeLayer to prevent C++ type errors when passing a MagicMock
+    mocker.patch("cerca_adreces_municipals_plugin.plugin.QgsLayerTreeLayer")
+
+    # Mock project, canvas, and iface to prevent QGIS UI crashes during tests
     mock_project = mocker.patch("cerca_adreces_municipals_plugin.plugin.QgsProject")
     mock_instance = mock_project.instance.return_value
 
     mock_iface = mocker.patch("cerca_adreces_municipals_plugin.plugin.iface")
     mock_canvas = mock_iface.mapCanvas.return_value
 
-    # Create fake layer and target extent[cite: 9]
+    # Create fake layer and target extent
     mock_layer = mocker.MagicMock()
     mock_layer.crs.return_value = "EPSG:4326"
 
-    # Simulate matching CRSs to bypass the transform branch[cite: 9]
+    # Simulate matching CRSs to bypass the transform branch
     mock_canvas.mapSettings().destinationCrs.return_value = "EPSG:4326"
     mock_extent = mocker.MagicMock()
 
     plugin_loaded.add_layer_to_canvas(mock_layer, mock_extent)
 
-    # Verify canvas zoom and layer registration occurred[cite: 9]
+    # Verify canvas zoom and layer registration occurred
     mock_instance.addMapLayer.assert_called_once_with(mock_layer, addToLegend=False)
     mock_extent.scale.assert_called_once_with(1.1)
     mock_canvas.setExtent.assert_called_once_with(mock_extent)
