@@ -7,12 +7,12 @@ qgisMinimumVersion=3.40
 icon=resources/icons/CercaLocal.png
 author=PSIG
 email=geraldo@servus.at
-changelog=
-tags=
 repository=https://github.com/psigcat/cerca_adreces_municipals
 homepage=https://github.com/psigcat/cerca_adreces_municipals
 tracker=https://github.com/psigcat/cerca_adreces_municipals/issues
 category=Plugins
-# Set to false before going into production
-experimental=True
+tags=
+experimental=False
 deprecated=False
+
+changelog=

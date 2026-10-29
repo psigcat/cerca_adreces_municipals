@@ -79,7 +79,7 @@ def test_search_shows_and_hides_progress(
     mock_show = mocker.patch.object(plugin_loaded.ui.progressBar, "show")
     mock_hide = mocker.patch.object(plugin_loaded.ui.progressBar, "hide")
 
-    plugin_loaded.search()
+    plugin_loaded.do_search()
 
     mock_show.assert_called_once()
     mock_hide.assert_called_once()

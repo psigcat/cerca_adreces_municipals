@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>803</width>
-    <height>209</height>
+    <width>806</width>
+    <height>227</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -20,7 +20,17 @@
    <string>CercaAdrecesMunicipals</string>
   </property>
   <widget class="QWidget" name="contents">
-   <layout class="QVBoxLayout" name="verticalLayout_2">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QgsMessageBar" name="messageBar">
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Raised</enum>
+      </property>
+     </widget>
+    </item>
     <item>
      <layout class="QGridLayout" name="gridLayout">
       <item column="0" row="3">
@@ -135,6 +145,14 @@
    </layout>
   </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QgsMessageBar</class>
+   <extends>QFrame</extends>
+   <header>qgis.gui</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

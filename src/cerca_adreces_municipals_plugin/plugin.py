@@ -1,12 +1,28 @@
 import configparser
+import json
 import logging
 import typing
 from pathlib import Path
 
 import qgis_plugin_tools
-from qgis.core import QgsProject
-from qgis.PyQt.QtCore import QCoreApplication, Qt
+from qgis.core import (
+    Qgis,
+    QgsBlockingNetworkRequest,
+    QgsCoordinateTransform,
+    QgsFeature,
+    QgsFeedback,
+    QgsField,
+    QgsGeometry,
+    QgsLayerTreeGroup,
+    QgsLayerTreeLayer,
+    QgsPointXY,
+    QgsProject,
+    QgsRectangle,
+    QgsVectorLayer,
+)
+from qgis.PyQt.QtCore import QCoreApplication, Qt, QUrl, QUrlQuery, QVariant
 from qgis.PyQt.QtGui import QAction, QIcon
+from qgis.PyQt.QtNetwork import QNetworkRequest
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.utils import iface as utils_iface
 from qgis_plugin_tools.tools import custom_logging
@@ -21,6 +37,7 @@ from cerca_adreces_municipals_plugin.plugin_dialog import (
 if typing.TYPE_CHECKING:
     from qgis.gui import QgisInterface
 
+API_URL = "https://eines.icgc.cat/geocodificador/autocompletar"
 LOGGER = logging.getLogger(__name__)
 
 iface = typing.cast("QgisInterface", utils_iface)
@@ -38,6 +55,11 @@ class CercaAdrecesMunicipals:
         self.toolbar = self.iface.addToolBar(self.action_name)
         if self.toolbar:
             self.toolbar.setObjectName(self.action_name)
+        plugin_name = self.get_metadata_parameter(self.plugin_dir, "general", "name")
+        if plugin_name is None:
+            self.plugin_name = "Cerca Adreces Municipals"
+        else:
+            self.plugin_name = plugin_name
 
     def initGui(self) -> None:  # noqa: N802
         """Init gui."""
@@ -46,7 +68,7 @@ class CercaAdrecesMunicipals:
         self._teardown_loggers = custom_logging.setup_loggers(
             cerca_adreces_municipals_plugin.__name__,
             qgis_plugin_tools.__name__,
-            message_log_name="Cerca Adreces Municipals",
+            message_log_name=self.plugin_name,
         )
 
         if hasattr(iface, "initializationCompleted"):
@@ -58,11 +80,11 @@ class CercaAdrecesMunicipals:
         img_folder = Path(self.plugin_dir) / "resources" / "icons"
         icon_path = Path(img_folder) / "CercaLocal.png"
         self.action = QAction(
-            QIcon(str(icon_path)), "Cerca Adreces Municipals", self.iface.mainWindow()
+            QIcon(str(icon_path)), self.plugin_name, self.iface.mainWindow()
         )
         self.action.setObjectName("CercaAdrecesMunicipals")
-        self.action.setWhatsThis("Cerca Adreces Municipals")
-        self.action.setStatusTip("Cerca Adreces Municipals")
+        self.action.setWhatsThis(self.plugin_name)
+        self.action.setStatusTip(self.plugin_name)
         self.action.triggered.connect(self.run)
 
         self.iface.addToolBarIcon(self.action)
@@ -78,7 +100,7 @@ class CercaAdrecesMunicipals:
         self.ui.deleteButton.setIcon(QIcon(str(Path(img_folder) / "Paperera.png")))
         self.ui.deleteButton.clicked.connect(self.delete_layers)
         self.ui.searchButton.setIcon(QIcon(str(Path(img_folder) / "CercaLocal.png")))
-        self.ui.searchButton.clicked.connect(self.search)
+        self.ui.searchButton.clicked.connect(self.do_search)
 
         # Get plugin version from metadata
         version = self.get_metadata_parameter(self.plugin_dir)
@@ -94,7 +116,7 @@ class CercaAdrecesMunicipals:
         self.iface.removePluginMenu(self.action_name, self.action)
         self.iface.removeToolBarIcon(self.action)
         self.ui.deleteButton.clicked.disconnect(self.delete_layers)
-        self.ui.searchButton.clicked.disconnect(self.search)
+        self.ui.searchButton.clicked.disconnect(self.do_search)
         del self.toolbar
 
     @log_if_fails
@@ -177,7 +199,7 @@ class CercaAdrecesMunicipals:
         if bas is None:
             return
 
-        grup = bas.findGroup("Cerca Local")
+        grup = bas.findGroup(self.plugin_name)
         if grup is not None:
             for fill in grup.children():
                 layer_id = fill.dump().split(" = ")[-1].strip()
@@ -188,12 +210,205 @@ class CercaAdrecesMunicipals:
         if canvas:
             canvas.refresh()
 
-    def search(self) -> None:
+    def do_search(self) -> None:
         """Fer cerca."""
         self.ui.progressBar.show()
         self.ui.progressBar.setValue(10)
         self.update_progress()
 
-        # connect to API and perform search
+        # connect to API and perform do_search
+        poblacio: str = self.ui.cb_poblacio.currentText()
+        carrer: str = self.ui.cb_carrer.currentText()
+        portal: str = self.ui.cb_portal.currentText()
+
+        if poblacio == "" and carrer == "" and portal == "":
+            self.ui.messageBar.pushMessage(
+                "Warning",
+                "Has de omplir al menys un camp.",
+                level=Qgis.MessageLevel.Warning,
+                duration=5,
+            )
+            self.ui.progressBar.hide()
+            return
+
+        address_str = carrer + " " + portal + "," + poblacio
+        address = self.get_json(
+            {
+                "text": address_str,
+                "size": 1,
+                "layers": "address",
+            }
+        )
+
+        if len(address["features"]) == 0:
+            self.ui.messageBar.pushMessage(
+                "Warning",
+                f"Adreça {address_str} no trobat",
+                level=Qgis.MessageLevel.Warning,
+                duration=5,
+            )
+        else:
+            self.add_geojson_to_memory(address, "Adreça " + address_str)
 
         self.ui.progressBar.hide()
+
+    def get_json(
+        self,
+        params: dict | None = None,
+        authcfg: str | None = None,
+        feedback: QgsFeedback | None = None,
+    ) -> dict:
+        """Get JSON from API."""
+        self.update_progress()
+        q = QUrl(API_URL)
+        if params:
+            query = QUrlQuery()
+            for k, v in params.items():
+                query.addQueryItem(k, str(v))
+            q.setQuery(query)
+
+        request = QNetworkRequest(q)
+        request.setRawHeader(b"Accept", b"application/json")
+        LOGGER.info("Geocodificador API amb %s", q.toString())
+
+        blocking = QgsBlockingNetworkRequest()
+        if authcfg:
+            blocking.setAuthCfg(authcfg)
+        code = blocking.get(request, False, feedback)
+        reply = blocking.reply()
+        status = reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
+        self.update_progress()
+
+        if code != QgsBlockingNetworkRequest.ErrorCode.NoError:
+            msg = f"HTTP {status}: {blocking.errorMessage()}"
+            raise RuntimeError(msg)
+        self.update_progress()
+        return json.loads(bytes(reply.content()).decode("utf-8"))
+
+    def add_geojson_to_memory(
+        self, geojson_dict: dict, layer_name: str = "Addresses"
+    ) -> QgsVectorLayer | None:
+        """Add JSON as memory layer to canvas."""
+        self.update_progress()
+        layer = QgsVectorLayer("Point?crs=epsg:4326", layer_name, "memory")
+        provider = layer.dataProvider()
+
+        if not geojson_dict.get("features"):
+            return None
+
+        # Setup attributes
+        first_props = geojson_dict["features"][0]["properties"]
+        fields = []
+
+        for key, value in first_props.items():
+            if isinstance(value, int):
+                fields.append(QgsField(key, QVariant.Int))
+            elif isinstance(value, float):
+                fields.append(QgsField(key, QVariant.Double))
+            else:
+                fields.append(QgsField(key, QVariant.String))
+
+        if provider is not None:
+            provider.addAttributes(fields)
+        layer.updateFields()
+
+        # Parse features and extract the bbox
+        qgs_features = []
+        target_extent = None
+
+        for feat_data in geojson_dict["features"]:
+            feat = QgsFeature(layer.fields())
+
+            # Build geometry
+            coords = feat_data["geometry"]["coordinates"]
+            geom = QgsGeometry.fromPointXY(QgsPointXY(coords[0], coords[1]))
+            feat.setGeometry(geom)
+
+            target_extent = self.extract_bbox(target_extent, feat_data["properties"])
+
+            # Populate attributes
+            for i, field in enumerate(layer.fields().toList()):
+                self.update_progress()
+                val = feat_data["properties"].get(field.name())
+                if isinstance(val, (dict, list)):
+                    val = json.dumps(val)
+                feat.setAttribute(i, val)
+
+            qgs_features.append(feat)
+
+        if provider is not None:
+            provider.addFeatures(qgs_features)
+        layer.updateExtents()
+        self.add_layer_to_canvas(layer, target_extent)
+
+        return layer
+
+    def extract_bbox(
+        self, extent: QgsRectangle | None, properties: dict
+    ) -> QgsRectangle | None:
+        """Extract the bbox from the addendum dictionary."""
+        self.update_progress()
+        if extent is None and "addendum" in properties:
+            addendum = properties["addendum"]
+            if "bbox" in addendum:
+                # Split "2.819,41.982,2.822,41.982" into floats
+                xmin, ymin, xmax, ymax = map(float, addendum["bbox"].split(","))
+                extent = QgsRectangle(xmin, ymin, xmax, ymax)
+
+        return extent
+
+    def add_layer_to_canvas(
+        self, layer: QgsVectorLayer, target_extent: QgsRectangle | None
+    ) -> None:
+        """Add layer to map canvas and zoom to the extracted bounding box."""
+        self.update_progress()
+        instance = QgsProject.instance()
+        if instance:
+            instance.addMapLayer(layer, addToLegend=False)
+
+            layer_group = self.get_layer_group(self.plugin_name)
+            if not layer_group:
+                layer_group = self.create_group(self.plugin_name)
+
+            if layer_group:
+                layer_group.addChildNode(QgsLayerTreeLayer(layer))
+
+        canvas = iface.mapCanvas()
+        if target_extent and iface and canvas is not None:
+            # Check if project CRS matches the layer's EPSG:4326 or transform the bbox.
+            canvas_crs = canvas.mapSettings().destinationCrs()
+            if canvas_crs != layer.crs():
+                transform = QgsCoordinateTransform(layer.crs(), canvas_crs, instance)
+                target_extent = transform.transformBoundingBox(target_extent)
+
+            # Apply extent to canvas with a buffer so the point isn't touching the edge
+            target_extent.scale(1.1)
+            canvas.setExtent(target_extent)
+            canvas.refresh()
+
+    def get_layer_group(self, layer_group_name: str) -> QgsLayerTreeGroup | None:
+        """Get layer group inside another group, false if it doesn't exist."""
+        instance = QgsProject.instance()
+        if instance is None:
+            return None
+
+        root = instance.layerTreeRoot()
+        if root is None:
+            return None
+
+        for group in root.findGroups():
+            if group.name() == layer_group_name:
+                return group
+        return None
+
+    def create_group(self, group_name: str) -> QgsLayerTreeGroup | None:
+        """Create layer group."""
+        instance = QgsProject.instance()
+        if instance is None:
+            return None
+
+        root = instance.layerTreeRoot()
+        if root is None:
+            return None
+
+        return root.addGroup(group_name)
