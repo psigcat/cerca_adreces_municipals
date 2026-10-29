@@ -301,12 +301,17 @@ class CercaAdrecesMunicipals:
         fields = []
 
         for key, value in first_props.items():
+            field = QgsField()
+            field.setName(key)
+
             if isinstance(value, int):
-                fields.append(QgsField(key, QMetaType.Type.Int))
+                field.setType(QMetaType.Type.Int)
             elif isinstance(value, float):
-                fields.append(QgsField(key, QMetaType.Type.Double))
+                field.setType(QMetaType.Type.Double)
             else:
-                fields.append(QgsField(key, QMetaType.Type.QString))
+                field.setType(QMetaType.Type.QString)
+
+            fields.append(field)
 
         if provider is not None:
             provider.addAttributes(fields)
@@ -378,9 +383,10 @@ class CercaAdrecesMunicipals:
             # Check if project CRS matches the layer's EPSG:4326 or transform the bbox.
             canvas_crs = canvas.mapSettings().destinationCrs()
             if canvas_crs != layer.crs():
-                transform = QgsCoordinateTransform(
-                    layer.crs(), canvas_crs, instance.transformContext()
-                )
+                transform = QgsCoordinateTransform()
+                transform.setSourceCrs(layer.crs())
+                transform.setDestinationCrs(canvas_crs)
+                transform.setContext(instance.transformContext())
                 target_extent = transform.transformBoundingBox(target_extent)
 
             # Apply extent to canvas with a buffer so the point isn't touching the edge

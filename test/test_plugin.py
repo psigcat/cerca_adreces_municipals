@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from qgis.core import Qgis, QgsBlockingNetworkRequest, QgsRectangle
 from qgis.PyQt.QtWidgets import QMessageBox
 
 from cerca_adreces_municipals_plugin import classFactory
@@ -139,3 +140,136 @@ def test_delete_layers(
     mock_root.findGroup.assert_called_once_with("Cerca Adreces Municipals")
     mock_instance.removeMapLayer.assert_called_once_with("mock_id_123")
     mock_root.removeChildNode.assert_called_once_with(mock_group)
+
+
+def test_get_metadata_parameter_success(
+    plugin_loaded: "CercaAdrecesMunicipals", tmp_path: Path
+) -> None:
+    """Test get_metadata_parameter when the file exists and is valid[cite: 8]."""
+    # Create a fake metadata.txt file in the temporary pytest directory[cite: 8]
+    metadata_file = tmp_path / "metadata.txt"
+    metadata_file.write_text("[general]\nversion=2.5.0\nname=Test Plugin")
+
+    # Read the version parameter[cite: 8]
+    version = plugin_loaded.get_metadata_parameter(tmp_path)
+    assert version == "2.5.0"
+
+    # Read the name parameter[cite: 8]
+    name = plugin_loaded.get_metadata_parameter(tmp_path, parameter="name")
+    assert name == "Test Plugin"
+
+
+def test_do_search_empty_inputs(
+    plugin_loaded: "CercaAdrecesMunicipals", mocker: "MockerFixture"
+) -> None:
+    """Test that do_search stops and shows a warning if all inputs are empty[cite: 8]."""
+    # Mock the UI combo boxes to return empty strings[cite: 8]
+    mocker.patch.object(plugin_loaded.ui.cb_poblacio, "currentText", return_value="")
+    mocker.patch.object(plugin_loaded.ui.cb_carrer, "currentText", return_value="")
+    mocker.patch.object(plugin_loaded.ui.cb_portal, "currentText", return_value="")
+
+    # Spy on the messageBar to ensure it gets called[cite: 8]
+    mock_push_message = mocker.patch.object(plugin_loaded.ui.messageBar, "pushMessage")
+
+    plugin_loaded.do_search()
+
+    mock_push_message.assert_called_once_with(
+        "Warning",
+        "Has de omplir al menys un camp.",
+        level=Qgis.MessageLevel.Warning,
+        duration=5,
+    )
+
+
+def test_do_search_no_results(
+    plugin_loaded: "CercaAdrecesMunicipals", mocker: "MockerFixture"
+) -> None:
+    """Test that do_search shows a warning if the API returns no features[cite: 8]."""
+    # Mock inputs so it passes the empty check[cite: 8]
+    mocker.patch.object(
+        plugin_loaded.ui.cb_poblacio, "currentText", return_value="Sabadell"
+    )
+    mocker.patch.object(plugin_loaded.ui.cb_carrer, "currentText", return_value="Major")
+    mocker.patch.object(plugin_loaded.ui.cb_portal, "currentText", return_value="1")
+
+    # Mock the API call to return an empty features list[cite: 8]
+    mocker.patch.object(plugin_loaded, "get_json", return_value={"features": []})
+
+    mock_push_message = mocker.patch.object(plugin_loaded.ui.messageBar, "pushMessage")
+
+    plugin_loaded.do_search()
+
+    mock_push_message.assert_called_once_with(
+        "Warning",
+        "Adreça Major 1,Sabadell no trobat",
+        level=Qgis.MessageLevel.Warning,
+        duration=5,
+    )
+
+
+def test_extract_bbox(plugin_loaded: "CercaAdrecesMunicipals") -> None:
+    """Test the extraction of a bounding box from the addendum dictionary[cite: 8]."""
+    properties = {"addendum": {"bbox": "2.819,41.982,2.822,41.983"}}
+
+    # Call extract_bbox with no existing extent[cite: 8]
+    result = plugin_loaded.extract_bbox(None, properties)
+
+    assert isinstance(result, QgsRectangle)
+    assert result.xMinimum() == 2.819
+    assert result.yMinimum() == 41.982
+    assert result.xMaximum() == 2.822
+    assert result.yMaximum() == 41.983
+
+
+def test_get_json_network_error(
+    plugin_loaded: "CercaAdrecesMunicipals", mocker: "MockerFixture"
+) -> None:
+    """Test that get_json raises a RuntimeError on HTTP failure[cite: 8]."""
+    # Mock the QgsBlockingNetworkRequest to simulate a failure[cite: 8]
+    mock_request_class = mocker.patch(
+        "cerca_adreces_municipals_plugin.plugin.QgsBlockingNetworkRequest"
+    )
+    mock_request_instance = mock_request_class.return_value
+
+    # Force the get() method to return a timeout error code instead of NoError[cite: 8]
+    mock_request_instance.get.return_value = (
+        QgsBlockingNetworkRequest.ErrorCode.TimeoutError
+    )
+    mock_request_instance.errorMessage.return_value = "Connection timed out"
+
+    # Mock the reply status code[cite: 8]
+    mock_reply = mock_request_instance.reply.return_value
+    mock_reply.attribute.return_value = 408
+
+    with pytest.raises(RuntimeError) as exc_info:
+        plugin_loaded.get_json({"text": "test"})
+
+    assert "HTTP 408: Connection timed out" in str(exc_info.value)
+
+
+def test_get_layer_group_and_create(
+    plugin_loaded: "CercaAdrecesMunicipals", mocker: "MockerFixture"
+) -> None:
+    """Test retrieving and creating layer groups in the QgsProject[cite: 8]."""
+    mock_project = mocker.patch("cerca_adreces_municipals_plugin.plugin.QgsProject")
+    mock_instance = mock_project.instance.return_value
+    mock_root = mock_instance.layerTreeRoot.return_value
+
+    # Setup mock group for finding[cite: 8]
+    mock_group = mocker.MagicMock()
+    mock_group.name.return_value = "Test Group"
+    mock_root.findGroups.return_value = [mock_group]
+
+    # Test getting an existing group[cite: 8]
+    result = plugin_loaded.get_layer_group("Test Group")
+    assert result == mock_group
+
+    # Test getting a non-existent group[cite: 8]
+    result_none = plugin_loaded.get_layer_group("Missing Group")
+    assert result_none is None
+
+    # Test creating a group[cite: 8]
+    mock_root.addGroup.return_value = mock_group
+    created = plugin_loaded.create_group("New Group")
+    mock_root.addGroup.assert_called_once_with("New Group")
+    assert created == mock_group
